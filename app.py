@@ -22,3 +22,7 @@ async def upload(file: UploadFile):
 @app.get("/download")
 async def download():
     return FileResponse('file.xlsx')
+
+@app.get('/')
+async def root():
+    return {'message': "it's up"}
