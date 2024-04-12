@@ -17,11 +17,19 @@ def read_mean_parameters(file):
     Read mean parameters with headers from especially separated labview data files as pandas.df
     '''
     headers_list = read_headers_list(file, 1)
+    # values = pd.read_csv(file, sep='\t', skiprows=1, nrows=1, header=None, encoding='cp1251', engine='python')
     values = pd.read_csv(file, sep='\s+', skiprows=2, nrows=1, header=None, encoding='cp1251')
-
+    # return read_parameters_with_no_brains(file)
     df = pd.DataFrame(values.values, columns=headers_list)
-    return df
+    # print(df)
 
+    return df
+    
+
+def read_parameters_with_no_brains(file):
+    df = pd.read_csv(file, sep='\t', encoding='cp1251', engine='python')
+    print(df)
+    return df
 def read_table(file):
     '''
     Read table with headers from especially separated labview data files as pandas.df
@@ -46,7 +54,7 @@ def get_float_table(df):
     new_df = pd.DataFrame(values, columns=df.columns)
     return new_df
 
-def interesting_table(table):
+def get_interesting_table(table):
     '''
     input: all table data
     output: table with only t(c) Po-Pa Pk-Pa Pmэкр Po-Pk Рдем columns
@@ -77,7 +85,7 @@ def add_period(interesting_table, period):
     interesting_table['period'] = interesting_table['period'].apply(int)
     return interesting_table
 
-def amplitudes_table(interesting_table):
+def get_amplitudes_table(interesting_table):
     '''
     got: table with interesting columns
     return: table with max, min amplitudes pэ, Pk-Pa in each period
@@ -102,7 +110,7 @@ def amplitudes_table(interesting_table):
 
     return amplitudes_table
 
-def sums_table(amplitudes_table):
+def get_sums_table(amplitudes_table):
     '''
     got: table with amplitudes
     return: table with summ amplitudes of all periods in each column
@@ -116,7 +124,7 @@ def sums_table(amplitudes_table):
 
     return sums_table
 
-def answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters):
+def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters):
     '''
     got: sums_table, amplitudes_table, interesting_table, mean_parameters
     return: table with sought-after vals
@@ -134,81 +142,112 @@ def answer_table(sums_table, amplitudes_table, interesting_table, mean_parameter
     
     return answer_table
 
-mean_parameters = read_mean_parameters(sys.argv[1])
-table = read_table(sys.argv[1])
+def create_excel_by_txt(file):
+    mean_parameters = read_mean_parameters(file)
+    table = read_table(file)
 
 
-# create excel file
-file = sys.argv[1]
-new_file_name = file.split('_')
-new_file_name = '-'.join(new_file_name[0].split('.')[:2] + new_file_name[-1].split('-')[:1])
-writer = pd.ExcelWriter(f'{new_file_name}.xlsx', engine='xlsxwriter')
+    # create excel file
+    new_file_name = file.split('_')
+    new_file_name = '-'.join(new_file_name[0].split('.')[:2] + new_file_name[-1].split('-')[:1])
+    writer = pd.ExcelWriter(f'{new_file_name}.xlsx', engine='xlsxwriter')
 
-# evaluate and write all tables
-table.to_excel(writer, 'Sheet1')
-mean_parameters.to_excel(writer, 'Sheet1', startcol=15, index=False)
+    # evaluate and write all tables
+    table.to_excel(writer, 'Sheet1')
+    mean_parameters.to_excel(writer, 'Sheet1', startcol=15, index=False)
 
-interesting_table = interesting_table(get_float_table(table))
+    interesting_table = get_interesting_table(get_float_table(table))
 
-period = get_period(mean_parameters)
-interesting_table = add_period(interesting_table, period)
+    period = get_period(mean_parameters)
+    interesting_table = add_period(interesting_table, period)
 
-amplitudes_table = amplitudes_table(interesting_table)
-sums_table = sums_table(amplitudes_table)
+    amplitudes_table = get_amplitudes_table(interesting_table)
+    sums_table = get_sums_table(amplitudes_table)
 
-answer_table = answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters)
+    answer_table = get_answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters)
 
 
-interesting_table.to_excel(writer, 'Sheet1', startcol=40, index=False)
-amplitudes_table.to_excel(writer, 'Sheet1', startcol=26, index=False)
+    interesting_table.to_excel(writer, 'Sheet1', startcol=40, index=False)
+    amplitudes_table.to_excel(writer, 'Sheet1', startcol=26, index=False)
 
-answer_table.to_excel(writer, 'Sheet1', startcol=15, startrow=10, index=False)
+    answer_table.to_excel(writer, 'Sheet1', startcol=15, startrow=10, index=False)
 
-workbook = writer.book
-worksheet = writer.sheets['Sheet1']
-worksheet.write('N1', len(interesting_table))
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+    worksheet.write('N1', len(interesting_table))
 
-# add chartsheet to excel and plot charts
-chartsheet = workbook.add_chartsheet()
-chart1 = workbook.add_chart({'type':'line'})
-chart1.add_series(
-    {
-        "name": 'Po-Pa',
-        "values": f"=Sheet1!$AP2:$AP{len(interesting_table)}",
-        "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
-        "line" : {'color' : 'green', 'width' : 1}
-    }
-)
-chart1.add_series(
-    {
-        "name": 'Pk-Pa',
-        "values": f"=Sheet1!$AQ2:$AQ{len(interesting_table)}",
-        "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
-        "line" : {'color' : 'blue', 'width' : 1}
-    }
-)
-chart1.add_series(
-    {
-        "name": 'Pmэкр',
-        "values": f"=Sheet1!$AS2:$AS{len(interesting_table)}",
-        "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
-        "line" : {'color' : 'red', 'width' : 1}
-    }
-)
-chart1.add_series(
-    {
-        "name": 'Pдем',
-        "values": f"=Sheet1!$AR2:$AR{len(interesting_table)}",
-        "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
-        "line" : {'color' : '#FF9900', 'width' : 1}
-    }
-)
-chart1.set_size({'width': 1500, 'height': 1000})
-chart1.set_x_axis({"name": "Измерение"})
-chart1.set_y_axis({"name": "P(kg/cm^2)"})
-chart1.set_x_axis({'num_format': '0.00', 'minor_unit' : 0.1})
-chartsheet.set_chart(chart1)
-chartsheet.activate()
+    # add chartsheet to excel and plot charts
+    chartsheet = workbook.add_chartsheet()
+    chart1 = workbook.add_chart({'type':'line'})
+    chart1.add_series(
+        {
+            "name": 'Po-Pa',
+            "values": f"=Sheet1!$AP2:$AP{len(interesting_table)}",
+            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "line" : {'color' : 'green', 'width' : 1}
+        }
+    )
+    chart1.add_series(
+        {
+            "name": 'Pk-Pa',
+            "values": f"=Sheet1!$AQ2:$AQ{len(interesting_table)}",
+            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "line" : {'color' : 'blue', 'width' : 1}
+        }
+    )
+    chart1.add_series(
+        {
+            "name": 'Pmэкр',
+            "values": f"=Sheet1!$AS2:$AS{len(interesting_table)}",
+            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "line" : {'color' : 'red', 'width' : 1}
+        }
+    )
+    chart1.add_series(
+        {
+            "name": 'Pдем',
+            "values": f"=Sheet1!$AR2:$AR{len(interesting_table)}",
+            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "line" : {'color' : '#FF9900', 'width' : 1}
+        }
+    )
+    chart1.set_size({'width': 1500, 'height': 1000})
+    chart1.set_x_axis({"name": "Измерение"})
+    chart1.set_y_axis({"name": "P(kg/cm^2)"})
+    chart1.set_x_axis({'num_format': '0.00', 'minor_unit' : 0.1})
+    chart1.set_legend({'position': 'bottom'})
+    chartsheet.set_chart(chart1)
+    chartsheet.activate()
+    cell_format = workbook.add_format({'bold': True, 'font_color': 'red'})
+    cell_format.set_font_size(20)
+    # wokrsheet add text description
+    worksheet.write('P14', 'Датчик на демпфере!', cell_format)
+    info = {'disk_distance': '25 мм', 'washer': '3 мм', 'interval': '1 с',
+            'step': '10**-4', 'diameter': '10 мм до 6 мм с удл цч',
+            'hole_diameter': '10 мм', 'nozzle_length': '50 мм + 25 мм',
+            'insert_variant': 3, 'd-f_between': 'сталь 1200 мм + фланцы',
+            'labview_num': 13, 'cs': '', 'compressor': '8 атм', 'sensors': 'дифференциальные датчики на 10 атм'}
+    
+    absolute = {'disk_distance': 'дистанции до диска', 'washer': 'шайба', 'interval': 'интервал',
+            'step': 'шаг', 'diameter': 'Истечение из сужающегося сопла с диаметра ',
+            'hole_diameter': 'Диаметр отверстия кавитатора (шайба)', 'nozzle_length': 'Длина сопла ~ ',
+            'insert_variant': 'Вставка в каверну, вариант № ', 'd-f_between': ' Между демпфером и форкамерой ',
+            'labview_num': ' Программа LabVIEW-', 'cs': 'Cs=', 'compressor': 'Компрессор на ', 'sensors': 'На каверне и экране стоят '}
+    
+    info['disk_distance']
+    worksheet.write('P15', f' {absolute["disk_distance"]} {info["disk_distance"]}', cell_format)
+    worksheet.write('P16', f'{absolute["washer"]} {info["washer"]} ,{absolute["interval"]} {info["interval"]}, {absolute["interval"]} {info["step"]}', cell_format)
+    worksheet.write('P17', f'{absolute["diameter"]} {info["diameter"]}', cell_format)
+    worksheet.write('P18', f'{absolute["hole_diameter"]} {info["hole_diameter"]}', cell_format)
+    worksheet.write('P19', f'{absolute["nozzle_length"]} {info["nozzle_length"]}', cell_format)
+    worksheet.write('P20', f'{absolute["insert_variant"]} {info["insert_variant"]}', cell_format)
+    worksheet.write('P21', f'{absolute["d-f_between"]} {info["d-f_between"]}', cell_format)
+    worksheet.write('P22', f'{absolute["labview_num"]}{info["labview_num"]}', cell_format)
+    worksheet.write('P23', f'{absolute["cs"]}{info["cs"]}', cell_format)
+    worksheet.write('P24', f'{absolute["compressor"]}{info["compressor"]}', cell_format)
+    worksheet.write('P25', f'{absolute["sensors"]}{info["sensors"]}', cell_format)
 
-writer.close()
+    writer.close()
+
+    return f"{new_file_name}.xlsx"
 
