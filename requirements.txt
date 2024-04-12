@@ -4,3 +4,4 @@ pandas
 xlsxwriter
 numpy
 fastapi
+uvicorn
