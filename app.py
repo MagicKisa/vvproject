@@ -30,6 +30,7 @@ class Info(BaseModel):
 
 
 app = FastAPI()
+app.state.experiment_info = {}
 @app.post("/upload")
 async def upload(file: UploadFile):
     try:
