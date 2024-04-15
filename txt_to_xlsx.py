@@ -125,13 +125,19 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
 #    print(mean_parameters.head())
     answer_table['Qlэфф(л/с)'] = 0.638 * np.sqrt(mean_parameters['Po(кг/см**2)'] - mean_parameters['Pk(кг/см**2)'])
     answer_table['Cqэфф'] = 1000 * mean_parameters['Qg(м**3/с)'] / answer_table['Qlэфф(л/с)']
-    answer_table['A(at)'] = (sums_table['pэ_max'] - sums_table['pэ_min']) / len(amplitudes_table)
-    answer_table['A/Po'] = answer_table['A(at)'] / mean_parameters['Po(кг/см**2)']
-    answer_table['A(atk)'] = (sums_table['pk_max'] - sums_table['pk_min']) / len(amplitudes_table)
-    answer_table['A/Pk'] = answer_table['A(atk)'] / mean_parameters['Po(кг/см**2)']
-    answer_table['div'] = answer_table['A(at)'] / answer_table['A(atk)']
+    answer_table['Am'] = (sums_table['pэ_max'] - sums_table['pэ_min']) / len(amplitudes_table)
+    answer_table['Am/Po'] = answer_table['Am'] / mean_parameters['Po(кг/см**2)']
+    answer_table['Ak'] = (sums_table['pk_max'] - sums_table['pk_min']) / len(amplitudes_table)
+    answer_table['Ak/Po'] = answer_table['Ak'] / mean_parameters['Po(кг/см**2)']
+    answer_table['Am/Ak'] = answer_table['Am'] / answer_table['Ak']
     
     return answer_table
+
+def get_voo_table():
+    columns = ['Voo(м/с)', 'Cq', 'Cd', 'Kp', 'T(s)', 'Std', 'Stdо']
+    data = [['=SQRT(2 * A2 * 100)', '=1000 * D2/C2', '=B2/A2', '=C2/(1000 * M2 * 0.025 * 0.009)', '=1/J2', '=J2*0.025/M2', '=K2*0.025/M2']]
+    voo_table = pd.DataFrame(data=data, columns=columns)
+    return voo_table
 
 def create_excel_by_txt(file, info):
     with open('check.txt', 'w') as f:
@@ -146,8 +152,8 @@ def create_excel_by_txt(file, info):
     writer = pd.ExcelWriter(f'{new_file_name}.xlsx', engine='xlsxwriter')
 
     # evaluate and write all tables
-    table.to_excel(writer, 'Sheet1')
-    mean_parameters.to_excel(writer, 'Sheet1', startcol=15, index=False)
+    table.to_excel(writer, 'Sheet1', startrow=3)
+    mean_parameters.to_excel(writer, 'Sheet1', index=False)
 
     interesting_table = get_interesting_table(get_float_table(table))
 
@@ -157,17 +163,17 @@ def create_excel_by_txt(file, info):
     amplitudes_table = get_amplitudes_table(interesting_table)
     sums_table = get_sums_table(amplitudes_table)
 
+    voo_table = get_voo_table()
     answer_table = get_answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters)
 
+    interesting_table.to_excel(writer, 'Sheet1', startcol=32, startrow=5, index=False)
+    amplitudes_table.to_excel(writer, 'Sheet1', startrow=5, startcol=26, index=False)
+    voo_table.to_excel(writer, 'Sheet1', startcol=12, index=False)
 
-    interesting_table.to_excel(writer, 'Sheet1', startcol=40, index=False)
-    amplitudes_table.to_excel(writer, 'Sheet1', startcol=26, index=False)
-
-    answer_table.to_excel(writer, 'Sheet1', startcol=15, startrow=10, index=False)
+    answer_table.to_excel(writer, 'Sheet1', startcol=23, index=False)
 
     workbook = writer.book
     worksheet = writer.sheets['Sheet1']
-    worksheet.write('N1', len(interesting_table))
 
     # add chartsheet to excel and plot charts
     chartsheet = workbook.add_chartsheet()
@@ -175,32 +181,32 @@ def create_excel_by_txt(file, info):
     chart1.add_series(
         {
             "name": 'Po-Pa',
-            "values": f"=Sheet1!$AP2:$AP{len(interesting_table)}",
-            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "values": f"=Sheet1!$AH2:$AH{len(interesting_table)}",
+            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
             "line" : {'color' : 'green', 'width' : 1}
         }
     )
     chart1.add_series(
         {
             "name": 'Pk-Pa',
-            "values": f"=Sheet1!$AQ2:$AQ{len(interesting_table)}",
-            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "values": f"=Sheet1!$AI2:$AI{len(interesting_table)}",
+            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
             "line" : {'color' : 'blue', 'width' : 1}
         }
     )
     chart1.add_series(
         {
             "name": 'Pmэкр',
-            "values": f"=Sheet1!$AS2:$AS{len(interesting_table)}",
-            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "values": f"=Sheet1!$AK2:$AK{len(interesting_table)}",
+            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
             "line" : {'color' : 'red', 'width' : 1}
         }
     )
     chart1.add_series(
         {
             "name": 'Pдем',
-            "values": f"=Sheet1!$AR2:$AR{len(interesting_table)}",
-            "categories": f"=Sheet1!$AO2:$AO2{len(interesting_table)}",
+            "values": f"=Sheet1!$AJ2:$AJ{len(interesting_table)}",
+            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
             "line" : {'color' : '#FF9900', 'width' : 1}
         }
     )
