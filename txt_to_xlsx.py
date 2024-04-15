@@ -188,7 +188,8 @@ def create_excel_by_txt(file, info):
                 "name": key,
                 "values": f"=Sheet1!$A{letter}2:$A{letter}{len(interesting_table)}",
                 "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
-                "line" : {'color' : color, 'width' : 1}
+                "line" : {'color' : color, 'width' : 1},
+                "smooth": true
             }
         )
         
@@ -202,7 +203,6 @@ def create_excel_by_txt(file, info):
     cell_format = workbook.add_format({'bold': True, 'font_color': 'red'})
     cell_format.set_font_size(20)
     # wokrsheet add text description
-    worksheet.write('P14', 'Датчик на демпфере!', cell_format)
 
     absolute = {'sensor_on': 'Датчик', 'disk_distance': 'дистанции до диска', 'washer': 'шайба', 'interval': 'интервал',
             'step': 'шаг', 'diameter': 'Истечение из сужающегося сопла с диаметра ',
