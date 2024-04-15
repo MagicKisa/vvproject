@@ -178,38 +178,20 @@ def create_excel_by_txt(file, info):
     # add chartsheet to excel and plot charts
     chartsheet = workbook.add_chartsheet()
     chart1 = workbook.add_chart({'type':'line'})
-    chart1.add_series(
-        {
-            "name": 'Po-Pa',
-            "values": f"=Sheet1!$AH2:$AH{len(interesting_table)}",
-            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
-            "line" : {'color' : 'green', 'width' : 1}
-        }
-    )
-    chart1.add_series(
-        {
-            "name": 'Pk-Pa',
-            "values": f"=Sheet1!$AI2:$AI{len(interesting_table)}",
-            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
-            "line" : {'color' : 'blue', 'width' : 1}
-        }
-    )
-    chart1.add_series(
-        {
-            "name": 'Pmэкр',
-            "values": f"=Sheet1!$AK2:$AK{len(interesting_table)}",
-            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
-            "line" : {'color' : 'red', 'width' : 1}
-        }
-    )
-    chart1.add_series(
-        {
-            "name": 'Pдем',
-            "values": f"=Sheet1!$AJ2:$AJ{len(interesting_table)}",
-            "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
-            "line" : {'color' : '#FF9900', 'width' : 1}
-        }
-    )
+
+    chart_dict = {'Po-Pa': ['H', 'green'], 'Pk-Pa': ['I', 'blue'], 'Pmэкр': ['K', 'red'], 'Pдем': ['J', '#FF9900']}
+    for key in chart_dict:
+        letter = chart_dict[key][0]
+        color = chart_dict[key][1]
+        chart1.add_series(
+            {
+                "name": key,
+                "values": f"=Sheet1!$A{letter}2:$A{letter}{len(interesting_table)}",
+                "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
+                "line" : {'color' : color, 'width' : 1}
+            }
+        )
+        
     chart1.set_size({'width': 1500, 'height': 1000})
     chart1.set_x_axis({"name": "Измерение"})
     chart1.set_y_axis({"name": "P(kg/cm^2)"})

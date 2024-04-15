@@ -10,7 +10,7 @@ info = {'sensor_on': ' на демпфере', 'disk_distance': '25 мм', 'wash
             'insert_variant': '3', 'd_f_between': 'сталь 1200 мм + фланцы',
             'labview_num': '13', 'cs': '', 'compressor': '8 атм', 'sensors': 'дифференциальные датчики на 10 атм'}
 
-absolute = {'sensor_on': 'Датчик на ', 'disk_distance': 'дистанции до диска', 'washer': 'шайба', 'interval': 'интервал',
+absolute = {'sensor_on': 'Датчик', 'disk_distance': 'дистанции до диска', 'washer': 'шайба', 'interval': 'интервал',
             'step': 'шаг', 'diameter': 'Истечение из сужающегося сопла с диаметра ',
             'hole_diameter': 'Диаметр отверстия кавитатора (шайба)', 'nozzle_length': 'Длина сопла ~ ',
             'insert_variant': 'Вставка в каверну, вариант № ', 'd_f_between': ' Между демпфером и форкамерой ',
@@ -26,15 +26,9 @@ with st.form(key='experiment_data_form'):
         info[key] = st.text_input(label=f'{absolute[key]}', value=f'{info[key]}')
     submitted = st.form_submit_button("Зафиксировать")
 
+# deliver form information to backend
 r = requests.post(f"{url}info", json=info)
-# print(r.content.encode('cp1251'))
-# print(r.status_code)
-if r.status_code == 200:
-    string = r.content.decode('utf-8')
-    # print(r.content.decode('utf-8'))
 
-    dictionary = json.loads(string)
-    # print(dictionary)
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
 archive_name = None
 date = None
