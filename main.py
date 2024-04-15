@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import json
+from zipfile import ZipFile
 
 
 info = {'sensor_on': ' на демпфере', 'disk_distance': '25 мм', 'washer': '3 мм', 'interval': '1 с',
@@ -27,7 +28,7 @@ with st.form(key='experiment_data_form'):
 
 r = requests.post(f"{url}info", json=info)
 # print(r.content.encode('cp1251'))
-print(r.status_code)
+# print(r.status_code)
 if r.status_code == 200:
     string = r.content.decode('utf-8')
     # print(r.content.decode('utf-8'))
@@ -35,14 +36,31 @@ if r.status_code == 200:
     dictionary = json.loads(string)
     # print(dictionary)
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
+archive_name = None
+date = None
 
-for uploaded_file in uploaded_files:        
-    if uploaded_file is not None:
-        files = {'file': uploaded_file}
-        response = requests.post(f"{url}upload", files=files)
-        new_file_name = uploaded_file.name
-        new_file_name = new_file_name.split('_')
-        new_file_name = '-'.join(new_file_name[0].split('.')[:2] + new_file_name[-1].split('-')[:1])
+if uploaded_files is not None:
+    with ZipFile('data.zip', 'w') as zip:
+        for uploaded_file in uploaded_files:
+            if uploaded_file is not None:
+                files = {'file': uploaded_file}
+                response = requests.post(f"{url}upload", files=files)
+                # create xlsx name from txt
+                new_file_name = uploaded_file.name
+                new_file_name = new_file_name.split('_')
+                date = '-'.join(new_file_name[0].split('.')[:2])
+                num_of_experiment = new_file_name[-1].split('-')[0]
+                new_file_name = f'{date}-{num_of_experiment}'
 
-        st.download_button(f'Загрузить {new_file_name}.xlsx', response.content, f'{new_file_name}.xlsx')
+                with open(f'{new_file_name}.xlsx', 'wb') as f:
+                    f.write(response.content)
+
+                zip.write(f'{new_file_name}.xlsx')
+
+        if date is not None:
+            archive_name = f"{date}.zip"
+
+if archive_name is not None:
+    with open('data.zip', 'rb') as zip:
+        st.download_button(f'Загрузить Архив', zip, archive_name, mime="application/zip")
             
