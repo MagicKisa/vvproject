@@ -152,8 +152,8 @@ def create_excel_by_txt(file, info):
     writer = pd.ExcelWriter(f'{new_file_name}.xlsx', engine='xlsxwriter')
 
     # evaluate and write all tables
-    table.to_excel(writer, 'Sheet1', startrow=3)
-    mean_parameters.to_excel(writer, 'Sheet1', index=False)
+    table.to_excel(writer, sheet_name='Sheet1', startrow=3)
+    mean_parameters.to_excel(writer, sheet_name='Sheet1', index=False)
 
     interesting_table = get_interesting_table(get_float_table(table))
 
@@ -166,11 +166,11 @@ def create_excel_by_txt(file, info):
     voo_table = get_voo_table()
     answer_table = get_answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters)
 
-    interesting_table.to_excel(writer, 'Sheet1', startcol=32, startrow=5, index=False)
-    amplitudes_table.to_excel(writer, 'Sheet1', startrow=5, startcol=26, index=False)
-    voo_table.to_excel(writer, 'Sheet1', startcol=12, index=False)
+    interesting_table.to_excel(writer, sheet_name='Sheet1', startcol=32, startrow=5, index=False)
+    amplitudes_table.to_excel(writer, sheet_name='Sheet1', startrow=5, startcol=26, index=False)
+    voo_table.to_excel(writer, sheet_name='Sheet1', startcol=12, index=False)
 
-    answer_table.to_excel(writer, 'Sheet1', startcol=23, index=False)
+    answer_table.to_excel(writer, sheet_name='Sheet1', startcol=23, index=False)
 
     workbook = writer.book
     worksheet = writer.sheets['Sheet1']
