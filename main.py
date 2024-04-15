@@ -19,8 +19,8 @@ absolute = {'sensor_on': 'Датчик на ', 'disk_distance': 'дистанц�
             'insert_variant': 'Вставка в каверну, вариант № ', 'd_f_between': ' Между демпфером и форкамерой ',
             'labview_num': ' Программа LabVIEW-', 'cs': 'Cs=', 'compressor': 'Компрессор на ', 'sensors': 'На каверне и экране стоят '}
 
-# url = "https://vvproject.onrender.com/"
-url = "http://127.0.0.1:8000/"
+url = "https://vvproject.onrender.com/"
+# url = "http://127.0.0.1:8000/"
 st.title("Система обработки текстовых результатов labview")
 
 st.write("Введите данные об эксперименте, датчиках")
@@ -34,10 +34,10 @@ r = requests.post(f"{url}info", json=info)
 print(r.status_code)
 if r.status_code == 200:
     string = r.content.decode('utf-8')
-    print(r.content.decode('utf-8'))
+    # print(r.content.decode('utf-8'))
 
     dictionary = json.loads(string)
-    print(dictionary)
+    # print(dictionary)
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
 
 for uploaded_file in uploaded_files:        
