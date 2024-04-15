@@ -189,7 +189,7 @@ def create_excel_by_txt(file, info):
                 "values": f"=Sheet1!$A{letter}2:$A{letter}{len(interesting_table)}",
                 "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
                 "line" : {'color' : color, 'width' : 1},
-                "smooth": true
+                "smooth": True
             }
         )
         
