@@ -3,6 +3,7 @@ import sys
 import xlsxwriter
 import math
 import numpy as np
+import json
 
 def read_headers_list(file, skiprows):
     '''
@@ -17,19 +18,11 @@ def read_mean_parameters(file):
     Read mean parameters with headers from especially separated labview data files as pandas.df
     '''
     headers_list = read_headers_list(file, 1)
-    # values = pd.read_csv(file, sep='\t', skiprows=1, nrows=1, header=None, encoding='cp1251', engine='python')
     values = pd.read_csv(file, sep='\s+', skiprows=2, nrows=1, header=None, encoding='cp1251')
-    # return read_parameters_with_no_brains(file)
     df = pd.DataFrame(values.values, columns=headers_list)
-    # print(df)
-
+    
     return df
     
-
-def read_parameters_with_no_brains(file):
-    df = pd.read_csv(file, sep='\t', encoding='cp1251', engine='python')
-    print(df)
-    return df
 def read_table(file):
     '''
     Read table with headers from especially separated labview data files as pandas.df
@@ -49,8 +42,6 @@ def get_float_table(df):
     values = np.array(df.values)
     f = lambda x: float(str(x).lower().replace(',', '.'))
     values= np.vectorize(f)(values)
-    #new_df = df.apply(lambda x: float(str(x).lower().replace(',', '.')))
-    #new_df = new_df.apply(pd.to_numeric)
     new_df = pd.DataFrame(values, columns=df.columns)
     return new_df
 
@@ -142,7 +133,9 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
     
     return answer_table
 
-def create_excel_by_txt(file):
+def create_excel_by_txt(file, info):
+    with open('check.txt', 'w') as f:
+        f.write(json.dumps(info))
     mean_parameters = read_mean_parameters(file)
     table = read_table(file)
 
@@ -222,33 +215,23 @@ def create_excel_by_txt(file):
     cell_format.set_font_size(20)
     # wokrsheet add text description
     worksheet.write('P14', 'Датчик на демпфере!', cell_format)
-    info = {'sensor_on': ' на демпфере', 'disk_distance': '25 мм', 'washer': '3 мм', 'interval': '1 с',
-            'step': '10**-4', 'diameter': '10 мм до 6 мм с удл цч',
-            'hole_diameter': '10 мм', 'nozzle_length': '50 мм + 25 мм',
-            'insert_variant': 3, 'd-f_between': 'сталь 1200 мм + фланцы',
-            'labview_num': 13, 'cs': '', 'compressor': '8 атм', 'sensors': 'дифференциальные датчики на 10 атм'}
 
-    absolute = {'sensor_on': 'Датчик на ', 'disk_distance': 'дистанции до диска', 'washer': 'шайба', 'interval': 'интервал',
+    absolute = {'sensor_on': 'Датчик', 'disk_distance': 'дистанции до диска', 'washer': 'шайба', 'interval': 'интервал',
             'step': 'шаг', 'diameter': 'Истечение из сужающегося сопла с диаметра ',
             'hole_diameter': 'Диаметр отверстия кавитатора (шайба)', 'nozzle_length': 'Длина сопла ~ ',
-            'insert_variant': 'Вставка в каверну, вариант № ', 'd-f_between': ' Между демпфером и форкамерой ',
+            'insert_variant': 'Вставка в каверну, вариант № ', 'd_f_between': ' Между демпфером и форкамерой ',
             'labview_num': ' Программа LabVIEW-', 'cs': 'Cs=', 'compressor': 'Компрессор на ', 'sensors': 'На каверне и экране стоят '}
 
 
-    
-    info['disk_distance']
-    worksheet.write('P14', f' {absolute["sensor_on"]} {info["sensor_on"]}', cell_format)
-    worksheet.write('P15', f' {absolute["disk_distance"]} {info["disk_distance"]}', cell_format)
-    worksheet.write('P16', f'{absolute["washer"]} {info["washer"]} ,{absolute["interval"]} {info["interval"]}, {absolute["step"]} {info["step"]}', cell_format)
-    worksheet.write('P17', f'{absolute["diameter"]} {info["diameter"]}', cell_format)
-    worksheet.write('P18', f'{absolute["hole_diameter"]} {info["hole_diameter"]}', cell_format)
-    worksheet.write('P19', f'{absolute["nozzle_length"]} {info["nozzle_length"]}', cell_format)
-    worksheet.write('P20', f'{absolute["insert_variant"]} {info["insert_variant"]}', cell_format)
-    worksheet.write('P21', f'{absolute["d-f_between"]} {info["d-f_between"]}', cell_format)
-    worksheet.write('P22', f'{absolute["labview_num"]}{info["labview_num"]}', cell_format)
-    worksheet.write('P23', f'{absolute["cs"]}{info["cs"]}', cell_format)
-    worksheet.write('P24', f'{absolute["compressor"]}{info["compressor"]}', cell_format)
-    worksheet.write('P25', f'{absolute["sensors"]}{info["sensors"]}', cell_format)
+    #info = {'sensor_on': ' на демпфере', 'disk_distance': '25 мм', 'washer': '3 мм', 'interval': '1 с',
+    #        'step': '10**-4', 'diameter': '10 мм до 6 мм с удл цч',
+    #        'hole_diameter': '10 мм', 'nozzle_length': '50 мм + 25 мм',
+    #        'insert_variant': '3', 'd_f_between': 'сталь 1200 мм + фланцы',
+    #        'labview_num': '13', 'cs': '', 'compressor': '8 атм', 'sensors': 'дифференциальные датчики на 10 атм'}
+
+    for i, key in enumerate(info.keys()):
+        worksheet.write(f'P{i + 14}', f' {absolute[key]} {info[key]}', cell_format)
+        
 
     writer.close()
 
