@@ -6,7 +6,7 @@ import numpy as np
 import json
 
 def read_headers_list(file, skiprows):
-    '''
+    ''' Читает заголовки из csv файла начиная со строчки skiprows + 1 
     Read headers list from csv file in non initial position skiprows + 1
     '''
     headers_df = pd.read_csv(file, sep='\s\s+', skiprows=skiprows, header=None, nrows=1, encoding='cp1251', engine='python')
@@ -14,7 +14,7 @@ def read_headers_list(file, skiprows):
     return headers_list
 
 def read_mean_parameters(file):
-    '''
+    ''' Читает осредненные значения параметров течения с первой строчки и записывает в pandas df
     Read mean parameters with headers from especially separated labview data files as pandas.df
     '''
     headers_list = read_headers_list(file, 1)
@@ -24,7 +24,7 @@ def read_mean_parameters(file):
     return df
     
 def read_table(file):
-    '''
+    ''' Читает осцилограммы и её заголовки и записывает в пандас датафрейм
     Read table with headers from especially separated labview data files as pandas.df
     '''
     headers_list = read_headers_list(file, 4)
@@ -36,6 +36,8 @@ def read_table(file):
 
 def get_float_table(df):
     '''
+    на вход принимает pd.dataframe со строковыми эксопненциальными записями чисел
+    на выход выдает pd.df с вещественными числами
     input: pd.dataframe with exponential string values
     output: pd.dataframe with float values
     '''
@@ -47,19 +49,26 @@ def get_float_table(df):
 
 def get_interesting_table(table):
     '''
+    на вход принимает pd.df содержащий все осцилограммы
+    на выходе выдает pd.df содержащий только t(c) Po-Pa Pk-Pa Pmэкр Po-Pk Рдем столбцы
     input: all table data
     output: table with only t(c) Po-Pa Pk-Pa Pmэкр Po-Pk Рдем columns
     '''
     columns = table.columns
     num_of_columns = [0, 2, 3, 7, 11]
-    
+
+    # копируем только интересующие нас столбцы
     interesting_columns = [columns[i] for i in num_of_columns]
     interesting_table = table[interesting_columns].copy()
+
+    # Po - Pk считаем как Po-Pa - Pk-Pa
     interesting_table['Pо-Pk'] = interesting_table[columns[2]] - interesting_table[columns[3]]
     return interesting_table
 
 def get_period(mean_parameters):
     '''
+    получает таблицу с осреднёнными значениями
+    выдаёт период посчитанный благодаря средней частоте
     got: table with mean parameters
     return: period
     '''
@@ -69,6 +78,8 @@ def get_period(mean_parameters):
 
 def add_period(interesting_table, period):
     '''
+    получает на вход таблицу с интересующими осцилограммами и значение периода
+    возвращает таблицу со столбцом содержащим номер периода
     got: table without period graph
     return: table with period graph
     '''
@@ -78,6 +89,8 @@ def add_period(interesting_table, period):
 
 def get_amplitudes_table(interesting_table):
     '''
+    получает таблицу с номерами периодов и осцилограммами и возвращает
+    таблицу с максимальными и минимальными амплитудами осцилограмм Pэкран, Pk-Pa на каждом периоде
     got: table with interesting columns
     return: table with max, min amplitudes pэ, Pk-Pa in each period
     '''
@@ -87,6 +100,7 @@ def get_amplitudes_table(interesting_table):
     p0_min = []
     p0_max = []
     d = {'Pэкран': {'max' : [], 'min' : []}, '(Pk-Pa)': {'max' : [], 'min' : []}}
+    # считаем максимумы и минимумы амплитуд за каждый период(кроме последнего так как он незавершён) для Pэкран и Pk-Pa 
     for period in interesting_table['period'].unique()[:-1]:
         for p_name in d.keys():
             d[p_name]['min'].append(interesting_table[interesting_table['period'] == period][p_name].min())
@@ -103,11 +117,13 @@ def get_amplitudes_table(interesting_table):
 
 def get_sums_table(amplitudes_table):
     '''
+    получает таблицу с амплитудами
+    выдает таблицу содержащую суммы её столбцов
     got: table with amplitudes
     return: table with summ amplitudes of all periods in each column
     '''
     sums_table = pd.DataFrame()
-#    print(amplitudes_table['pэ_max'].sum())
+
     sums_table['pэ_max'] = [amplitudes_table['pэ_max'].sum()]
     sums_table['pэ_min'] = [amplitudes_table['pэ_min'].sum()]
     sums_table['pk_max'] = [amplitudes_table['pk_max'].sum()]
@@ -117,12 +133,14 @@ def get_sums_table(amplitudes_table):
 
 def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters):
     '''
+    получает на вход все посчитанные до этого таблицы
+    используя их по формулам считает необходимые значения и возвращает их
     got: sums_table, amplitudes_table, interesting_table, mean_parameters
     return: table with sought-after vals
     '''
     answer_table = pd.DataFrame()
     mean_parameters = get_float_table(mean_parameters)
-#    print(mean_parameters.head())
+    
     answer_table['Qlэфф(л/с)'] = 0.638 * np.sqrt(mean_parameters['Po(кг/см**2)'] - mean_parameters['Pk(кг/см**2)'])
     answer_table['Cqэфф'] = 1000 * mean_parameters['Qg(м**3/с)'] / answer_table['Qlэфф(л/с)']
     answer_table['Am'] = (sums_table['pэ_max'] - sums_table['pэ_min']) / len(amplitudes_table)
@@ -134,22 +152,33 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
     return answer_table
 
 def get_voo_table():
+    '''необходима для записи формул в итоговый excel файл,
+    при записи в файл на основе уже записанных в книгу excel данных считает по формулам необходимые значения
+    '''
     columns = ['Voo(м/с)', 'Cq', 'Cd', 'Kp', 'T(s)', 'Std', 'Stdо']
     data = [['=SQRT(2 * A2 * 100)', '=1000 * D2/C2', '=B2/A2', '=C2/(1000 * M2 * 0.025 * 0.009)', '=1/J2', '=J2*0.025/M2', '=K2*0.025/M2']]
     voo_table = pd.DataFrame(data=data, columns=columns)
     return voo_table
 
 def create_excel_by_txt(file, info):
+    '''
+    На вход принимает название файла содержащего текстовые данные эксперимента и таблицу с данными об экспериментальной установке 
+    проводит расчёт интересующих значений записывает их в excel и строит необходимые графики
+    '''
+
+    # чтение исходных данных
     mean_parameters = read_mean_parameters(file)
     table = read_table(file)
 
 
     # create excel file
+    # создание excel файла
     new_file_name = file.split('_')
     new_file_name = '-'.join(new_file_name[0].split('.')[:2] + new_file_name[-1].split('-')[:1])
     writer = pd.ExcelWriter(f'{new_file_name}.xlsx', engine='xlsxwriter')
 
     # evaluate and write all tables
+    # вычисление и запись всех таблиц
     table.to_excel(writer, sheet_name='Sheet1', startrow=3)
     mean_parameters.to_excel(writer, sheet_name='Sheet1', index=False)
 
@@ -160,20 +189,18 @@ def create_excel_by_txt(file, info):
 
     amplitudes_table = get_amplitudes_table(interesting_table)
     sums_table = get_sums_table(amplitudes_table)
-
     voo_table = get_voo_table()
     answer_table = get_answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters)
 
     interesting_table.to_excel(writer, sheet_name='Sheet1', startcol=32, startrow=5, index=False)
     amplitudes_table.to_excel(writer, sheet_name='Sheet1', startrow=5, startcol=26, index=False)
     voo_table.to_excel(writer, sheet_name='Sheet1', startcol=12, index=False)
-
     answer_table.to_excel(writer, sheet_name='Sheet1', startcol=23, index=False)
 
     workbook = writer.book
     worksheet = writer.sheets['Sheet1']
 
-    # add chartsheet to excel and plot charts
+    # добавление страницы с графиками и графиков на неё, форматирования
     chartsheet = workbook.add_chartsheet()
     chart1 = workbook.add_chart({'type':'line'})
 
@@ -190,7 +217,7 @@ def create_excel_by_txt(file, info):
                 "smooth": True
             }
         )
-        
+
     chart1.set_size({'width': 1500, 'height': 1000})
     chart1.set_x_axis({"name": "Измерение"})
     chart1.set_y_axis({"name": "P(kg/cm^2)"})
@@ -200,12 +227,10 @@ def create_excel_by_txt(file, info):
     chartsheet.activate()
     cell_format = workbook.add_format({'bold': True, 'font_color': 'red'})
     cell_format.set_font_size(20)
-    # wokrsheet add text description
 
-    
+    # Добавление на числовую страницу описания установки
     for i, key in enumerate(info.keys()):
-        worksheet.write(f'P{i + 14}', f' {info[key][0]} {info[key][1]}', cell_format)
-        
+        worksheet.write(f'P{i + 14}', f' {info[key][0]} {info[key][1]}', cell_format)        
 
     writer.close()
 
