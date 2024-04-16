@@ -140,8 +140,6 @@ def get_voo_table():
     return voo_table
 
 def create_excel_by_txt(file, info):
-    with open('check.txt', 'w') as f:
-        f.write(json.dumps(info))
     mean_parameters = read_mean_parameters(file)
     table = read_table(file)
 

@@ -19,8 +19,6 @@ def create_excel_filename(filename):
 with open('form_data.json', 'r', encoding='cp1251') as f:
     form_info = json.load(f)
 
-# url = "https://vvproject.onrender.com/"
-# url = "http://127.0.0.1:8000/"
 st.title("Система обработки текстовых результатов labview")
 
 st.write("Введите данные об эксперименте, датчиках")
@@ -31,9 +29,6 @@ with st.form(key='experiment_data_form'):
     with open('form_data.json', 'w', encoding='cp1251') as f:
         f.write(json.dumps(form_info))
 
-# deliver form information to backend
-# r = requests.post(f"{url}info", json=form_info)
-
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
 archive_name = None
 date = None
@@ -42,9 +37,9 @@ if uploaded_files is not None:
     with ZipFile('data.zip', 'w') as zip:
         for uploaded_file in uploaded_files:
             if uploaded_file is not None:
-                files = {'file': uploaded_file}
-             #   response = requests.post(f"{url}upload", files=files)
                 # create xlsx name from txt
+                with open(uploaded_file.name, 'w') as f:
+                    f.write(uploaded_file)
                 excel_file = create_excel_by_txt(uploaded_file.name, form_info)
                 excel_filename = create_excel_filename(uploaded_file.name)
 
