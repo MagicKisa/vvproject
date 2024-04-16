@@ -1,33 +1,38 @@
 import streamlit as st
 import requests
 import json
+from txt_to_xlsx import create_excel_by_txt
 from zipfile import ZipFile
 
+def get_date_from_filename(filename):
+    date = '-'.join(filename.split('.')[:2])
+    return date
 
-info = {'sensor_on': ' на демпфере', 'disk_distance': '25 мм', 'washer': '3 мм', 'interval': '1 с',
-            'step': '10**-4', 'diameter': '10 мм до 6 мм с удл цч',
-            'hole_diameter': '10 мм', 'nozzle_length': '50 мм + 25 мм',
-            'insert_variant': '3', 'd_f_between': 'сталь 1200 мм + фланцы',
-            'labview_num': '13', 'cs': '', 'compressor': '8 атм', 'sensors': 'дифференциальные датчики на 10 атм'}
+def create_excel_filename(filename):
+    date = get_date_from_filename(filename)
+    
+    num_of_experiment = filename.split('-')[0].split('_')[-1]
+    excel_filename = f'{date}-{num_of_experiment}.xlsx'
 
-absolute = {'sensor_on': 'Датчик', 'disk_distance': 'дистанции до диска', 'washer': 'шайба', 'interval': 'интервал',
-            'step': 'шаг', 'diameter': 'Истечение из сужающегося сопла с диаметра ',
-            'hole_diameter': 'Диаметр отверстия кавитатора (шайба)', 'nozzle_length': 'Длина сопла ~ ',
-            'insert_variant': 'Вставка в каверну, вариант № ', 'd_f_between': ' Между демпфером и форкамерой ',
-            'labview_num': ' Программа LabVIEW-', 'cs': 'Cs=', 'compressor': 'Компрессор на ', 'sensors': 'На каверне и экране стоят '}
+    return excel_filename
 
-url = "https://vvproject.onrender.com/"
+with open('form_data.json', 'r', encoding='cp1251') as f:
+    form_info = json.load(f)
+
+# url = "https://vvproject.onrender.com/"
 # url = "http://127.0.0.1:8000/"
 st.title("Система обработки текстовых результатов labview")
 
 st.write("Введите данные об эксперименте, датчиках")
 with st.form(key='experiment_data_form'):
-    for key in info.keys():
-        info[key] = st.text_input(label=f'{absolute[key]}', value=f'{info[key]}')
+    for key in form_info.keys():
+        form_info[key][1] = st.text_input(label=f'{form_info[key][0]}', value=f'{form_info[key][1]}')
     submitted = st.form_submit_button("Зафиксировать")
+    with open('form_data.json', 'w', encoding='cp1251') as f:
+        f.write(json.dumps(form_info))
 
 # deliver form information to backend
-r = requests.post(f"{url}info", json=info)
+# r = requests.post(f"{url}info", json=form_info)
 
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
 archive_name = None
@@ -38,19 +43,13 @@ if uploaded_files is not None:
         for uploaded_file in uploaded_files:
             if uploaded_file is not None:
                 files = {'file': uploaded_file}
-                response = requests.post(f"{url}upload", files=files)
+             #   response = requests.post(f"{url}upload", files=files)
                 # create xlsx name from txt
-                new_file_name = uploaded_file.name
-                new_file_name = new_file_name.split('_')
-                date = '-'.join(new_file_name[0].split('.')[:2])
-                num_of_experiment = new_file_name[-1].split('-')[0]
-                new_file_name = f'{date}-{num_of_experiment}'
+                excel_file = create_excel_by_txt(uploaded_file.name, form_info)
+                excel_filename = create_excel_filename(uploaded_file.name)
 
-                with open(f'{new_file_name}.xlsx', 'wb') as f:
-                    f.write(response.content)
-
-                zip.write(f'{new_file_name}.xlsx')
-
+                zip.write(excel_file)
+                date = get_date_from_filename(uploaded_file.name)
         if date is not None:
             archive_name = f"{date}.zip"
 

@@ -31,6 +31,7 @@ class Info(BaseModel):
 
 app = FastAPI()
 app.state.experiment_info = {}
+
 @app.post("/upload")
 async def upload(file: UploadFile):
     try:
@@ -42,13 +43,14 @@ async def upload(file: UploadFile):
     finally:
         file.file.close()
 
-    x = create_excel_by_txt(file.filename, app.state.experiment_info)
+#    app.state.files[file.filename] = file
 
     return FileResponse(x)
 
-@app.get("/download")
-async def download():
-    return FileResponse('file.xlsx')
+@app.get("/download/{filename}")
+async def download(filename: str):
+    x = create_excel_by_txt(filename, app.state.experiment_info)
+    return FileResponse(x)
 
 @app.post('/info')
 async def update_info(data: Info):
