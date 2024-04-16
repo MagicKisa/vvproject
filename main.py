@@ -8,6 +8,7 @@ def get_date_from_filename(filename):
     date = '-'.join(filename.split('.')[:2])
     return date
 
+@st.cache_data
 def create_excel_filename(filename):
     date = get_date_from_filename(filename)
     
@@ -15,6 +16,13 @@ def create_excel_filename(filename):
     excel_filename = f'{date}-{num_of_experiment}.xlsx'
 
     return excel_filename
+
+@st.cache_data
+def get_excel_file_and_filename(filename, form_info):
+    excel_file = create_excel_by_txt(filename, form_info)
+    excel_filename = create_excel_filename(filename)
+
+    return excel_file, excel_filename
 
 with open('form_data.json', 'r', encoding='cp1251') as f:
     form_info = json.load(f)
@@ -41,15 +49,14 @@ if uploaded_files is not None:
                 # create xlsx name from txt
                 with open(uploaded_file.name, 'wb') as f:
                     f.write(uploaded_file.read())
-                excel_file = create_excel_by_txt(uploaded_file.name, form_info)
-                excel_filename = create_excel_filename(uploaded_file.name)
+                excel_file, excel_filename = get_excel_file_and_filename(uploaded_file.name, form_info)
 
                 zip.write(excel_file)
                 date = get_date_from_filename(uploaded_file.name)
         #if date is not None:
-        archive_name = f"{date}.zip"
+            archive_name = f"{date}.zip"
 
-if archive_name is not None:
+if archive_name is not None and date is not None:
     with open('data.zip', 'rb') as zip:
         st.download_button(f'Загрузить Архив', zip, archive_name)
             
