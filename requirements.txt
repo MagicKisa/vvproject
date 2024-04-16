@@ -1,9 +1,6 @@
-gunicorn
-python-multipart
 streamlit
 requests
 pandas
 xlsxwriter
 numpy
-fastapi
-uvicorn
+
