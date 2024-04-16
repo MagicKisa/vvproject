@@ -39,7 +39,7 @@ if uploaded_files is not None:
             if uploaded_file is not None:
                 # create xlsx name from txt
                 with open(uploaded_file.name, 'wb') as f:
-                    f.write(uploaded_file)
+                    f.write(uploaded_file.read())
                 excel_file = create_excel_by_txt(uploaded_file.name, form_info)
                 excel_filename = create_excel_filename(uploaded_file.name)
 
