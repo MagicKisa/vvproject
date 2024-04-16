@@ -47,7 +47,7 @@ if uploaded_files is not None:
                 zip.write(excel_file)
                 date = get_date_from_filename(uploaded_file.name)
         #if date is not None:
-       archive_name = f"{date}.zip"
+        archive_name = f"{date}.zip"
 
 if archive_name is not None:
     with open('data.zip', 'rb') as zip:
