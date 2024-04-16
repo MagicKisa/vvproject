@@ -33,22 +33,22 @@ uploaded_files = st.file_uploader("Перетащите сюда и бросьт
 archive_name = None
 date = None
 
-if uploaded_files is not None:
-    with ZipFile('data.zip', 'w') as zip:
-        for uploaded_file in uploaded_files:
-            if uploaded_file is not None:
-                # create xlsx name from txt
-                with open(uploaded_file.name, 'wb') as f:
-                    f.write(uploaded_file.read())
-                excel_file = create_excel_by_txt(uploaded_file.name, form_info)
-                excel_filename = create_excel_filename(uploaded_file.name)
+if archive_name is None:
+    if uploaded_files is not None:
+        with ZipFile('data.zip', 'w') as zip:
+            for uploaded_file in uploaded_files:
+                if uploaded_file is not None:
+                    # create xlsx name from txt
+                    with open(uploaded_file.name, 'wb') as f:
+                        f.write(uploaded_file.read())
+                    excel_file = create_excel_by_txt(uploaded_file.name, form_info)
+                    excel_filename = create_excel_filename(uploaded_file.name)
 
-                zip.write(excel_file)
-                date = get_date_from_filename(uploaded_file.name)
-        if date is not None:
-            archive_name = f"{date}.zip"
-
-if archive_name is not None:
+                    zip.write(excel_file)
+                    date = get_date_from_filename(uploaded_file.name)
+            if date is not None:
+                archive_name = f"{date}.zip"
+else:
     with open('data.zip', 'rb') as zip:
         st.download_button(f'Загрузить Архив', zip, archive_name, mime="application/zip")
             
