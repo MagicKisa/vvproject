@@ -21,6 +21,12 @@ def get_excel_filename(filename, form_info, _compound_wb):
 
     return excel_filename
 
+@st.cache_data
+def get_compound_wb():
+    compound_wb = openpyxl.Workbook()
+
+    return compound_wb
+
 # Выгружаем информацию об эксперименте из файла, в который её сохранили при инициализации проекта
 with open('form_data.json', 'r', encoding='cp1251') as f:
     form_info = json.load(f)
@@ -38,7 +44,7 @@ with st.form(key='experiment_data_form'):
         f.write(json.dumps(form_info))
 
 compound_filename = st.text_input(label='Введите название общего файла', value='S1200d06k10L75dis25V№3')
-compound_wb = openpyxl.Workbook()
+compound_wb = get_compound_wb()
 
 # виджет для загрузки нескольких текстовых файлов
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
@@ -55,7 +61,6 @@ with ZipFile('data.zip', 'w', ZIP_DEFLATED) as zip:
             f.write(uploaded_file.read())
     
         excel_filename = get_excel_filename(uploaded_file.name, form_info, compound_wb)
-
         zip.write(excel_filename)
         excel_filenames.append(excel_filename)
         date = get_date_from_filename(uploaded_file.name)

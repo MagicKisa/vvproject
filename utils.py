@@ -82,8 +82,7 @@ def get_period(mean_parameters):
     got: table with mean parameters
     return: period
     '''
-    float_mean_parameters = get_float_table(mean_parameters)
-    period = 1 / float_mean_parameters['Hk(гц)'][0]
+    period = 1 / mean_parameters['Hk(гц)'][0]
     return period
 
 def add_period(interesting_table, period):
@@ -149,7 +148,6 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
     return: table with sought-after vals
     '''
     answer_table = pd.DataFrame()
-    mean_parameters = get_float_table(mean_parameters)
     
     answer_table['Qlэфф(л/с)'] = 0.638 * np.sqrt(mean_parameters['Po(кг/см**2)'] - mean_parameters['Pk(кг/см**2)'])
     answer_table['Cqэфф'] = 1000 * mean_parameters['Qg(м**3/с)'] / answer_table['Qlэфф(л/с)']
@@ -165,7 +163,6 @@ def get_voo_table(mean_parameters):
     '''необходима для записи формул в итоговый excel файл,
     при записи в файл на основе уже записанных в книгу excel данных считает по формулам необходимые значения
     '''
-    mean_parameters = get_float_table(mean_parameters)
     A2 = mean_parameters['Po(кг/см**2)']
     B2 = mean_parameters['Pk(кг/см**2)']
     C2 = mean_parameters['Ql(л/с)']
@@ -227,6 +224,9 @@ def create_excel_by_txt(file, info, compound_wb):
     mean_parameters = read_mean_parameters(file)
     table = read_table(file)
 
+    # преобразование к числовому типу
+    table = get_float_table(table)
+    mean_parameters = get_float_table(mean_parameters)
 
     # create excel file
     # создание excel файла
@@ -236,13 +236,14 @@ def create_excel_by_txt(file, info, compound_wb):
 
     # evaluate and write all tables
     # вычисление и запись всех таблиц
+    
     table.to_excel(writer, sheet_name='Sheet1', startrow=3)
     mean_parameters.to_excel(writer, sheet_name='Sheet1', index=False)
 
     period = get_period(mean_parameters)
     voo_table = get_voo_table(mean_parameters)
 
-    interesting_table = get_interesting_table(get_float_table(table))
+    interesting_table = get_interesting_table(table)
     interesting_table = add_period(interesting_table, period)
 
     amplitudes_table = get_amplitudes_table(interesting_table)
