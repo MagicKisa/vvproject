@@ -2,6 +2,8 @@ import pandas as pd
 import sys
 import xlsxwriter
 import openpyxl
+from openpyxl.styles import Font
+from openpyxl.chart import LineChart, Reference
 import numpy as np
 import streamlit as st
 import json
@@ -67,6 +69,7 @@ def get_interesting_table(table):
 
     # Po - Pk считаем как Po-Pa - Pk-Pa
     interesting_table['Pо-Pk'] = interesting_table[columns[2]] - interesting_table[columns[3]]
+    interesting_table.rename(columns={'sigm': 'Pдем'}, inplace=True)
     return interesting_table
 
 def get_period(mean_parameters):
@@ -228,7 +231,7 @@ def create_excel_by_txt(file, info):
     # создание excel файла
     new_file_name = file.split('_')
     new_file_name = '-'.join(new_file_name[0].split('.')[:2] + new_file_name[-1].split('-')[:1])
-    writer = pd.ExcelWriter(f'{new_file_name}.xlsx', engine='xlsxwriter')
+    writer = pd.ExcelWriter(f'{new_file_name}.xlsx', engine='openpyxl')
 
     # evaluate and write all tables
     # вычисление и запись всех таблиц
@@ -255,36 +258,34 @@ def create_excel_by_txt(file, info):
     worksheet = writer.sheets['Sheet1']
 
     # добавление страницы с графиками и графиков на неё, форматирования
-    chartsheet = workbook.add_chartsheet()
-    chart1 = workbook.add_chart({'type':'line'})
+    chartsheet = workbook.create_chartsheet()
+    chart1 = LineChart()
+    chart1.x_axis.title = 'Измерение'
+    chart1.y_axis.title = 'P(kg/cm^2)'
 
-    chart_dict = {'Po-Pa': ['H', 'green'], 'Pk-Pa': ['I', 'blue'], 'Pmэкр': ['K', 'red'], 'Pдем': ['J', '#FF9900']}
-    for key in chart_dict:
-        letter = chart_dict[key][0]
-        color = chart_dict[key][1]
-        chart1.add_series(
-            {
-                "name": key,
-                "values": f"=Sheet1!$A{letter}2:$A{letter}{len(interesting_table)}",
-                "categories": f"=Sheet1!$AG2:$AG2{len(interesting_table)}",
-                "line" : {'color' : color, 'width' : 1},
-                "smooth": True
-            }
-        )
+    data = Reference(worksheet, min_col=34, max_col=37, min_row=6, max_row=len(interesting_table))
+    chart1.add_data(data, titles_from_data=True)
+    # Style the lines
 
-    chart1.set_size({'width': 1500, 'height': 1000})
-    chart1.set_x_axis({"name": "Измерение"})
-    chart1.set_y_axis({"name": "P(kg/cm^2)"})
-    chart1.set_x_axis({'num_format': '0.00', 'minor_unit' : 0.1})
-    chart1.set_legend({'position': 'bottom'})
-    chartsheet.set_chart(chart1)
-    chartsheet.activate()
-    cell_format = workbook.add_format({'bold': True, 'font_color': 'red'})
-    cell_format.set_font_size(20)
+    width = 10000
+    colors = ("008000", "004DFF", "FF6600", "FF0000")
+    for i, color in enumerate(colors):
+        style = chart1.series[i]
+        style.graphicalProperties.line.solidFill = color
+        style.graphicalProperties.line.width = width # width in EMUs
+        style.smooth = True
+
+    dates = Reference(worksheet, min_col=33, min_row=6, max_row=len(interesting_table))
+    chart1.set_categories(dates)
+    
+    chartsheet.add_chart(chart1)
+
 
     # Добавление на числовую страницу описания установки
     for i, key in enumerate(info.keys()):
-        worksheet.write(f'P{i + 14}', f' {info[key][0]} {info[key][1]}', cell_format)        
+        cell = worksheet[f'P{i + 14}']
+        cell.font = Font(color='FF0000', size=20, bold=True)
+        worksheet[f'P{i + 14}'] = f'{info[key][0]} {info[key][1]}'        
 
     writer.close()
 
