@@ -22,7 +22,7 @@ def get_excel_filename(filename, form_info, _compound_wb):
     return excel_filename
 
 @st.cache_resource
-def get_compound_wb():
+def get_compound_wb(compound_filename):
     compound_wb = openpyxl.Workbook()
 
     return compound_wb
@@ -44,7 +44,7 @@ with st.form(key='experiment_data_form'):
         f.write(json.dumps(form_info))
 
 compound_filename = st.text_input(label='Введите название общего файла', value='S1200d06k10L75dis25V№3')
-compound_wb = get_compound_wb()
+compound_wb = get_compound_wb(compound_filename)
 
 # виджет для загрузки нескольких текстовых файлов
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
