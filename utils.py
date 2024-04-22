@@ -227,7 +227,6 @@ def create_excel_by_txt(file, info, compound_wb):
     # преобразование к числовому типу
     table = get_float_table(table)
     mean_parameters = get_float_table(mean_parameters)
-
     # create excel file
     # создание excel файла
     new_file_name = file.split('_')
