@@ -1,6 +1,8 @@
 import streamlit as st
 import requests
 import json
+import openpyxl
+
 from utils import create_excel_by_txt, compound_excel_from_many
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -11,26 +13,13 @@ def get_date_from_filename(filename):
     date = '-'.join(filename.split('.')[:2])
     return date
 
-@st.cache_data
-def create_excel_filename(filename):
-    ''' Создаёт на основе имени текстового файла имя файла excel
-
-    записывает его как датабезгода-номерэксперимента.xlsx
-    '''
-    date = get_date_from_filename(filename)
-    
-    num_of_experiment = filename.split('_')[1].split('-')[0]
-    excel_filename = f'{date}-{num_of_experiment}.xlsx'
-
-    return excel_filename
 
 # декоратор указывает streamlit кэшировать получаемые excel-файлы, чтобы не пересчитывать
 @st.cache_data
-def get_excel_file_and_filename(filename, form_info):
-    excel_file = create_excel_by_txt(filename, form_info)
-    excel_filename = create_excel_filename(filename)
+def get_excel_filename(filename, form_info, _compound_wb):
+    excel_filename = create_excel_by_txt(filename, form_info, _compound_wb)
 
-    return excel_file, excel_filename
+    return excel_filename
 
 # Выгружаем информацию об эксперименте из файла, в который её сохранили при инициализации проекта
 with open('form_data.json', 'r', encoding='cp1251') as f:
@@ -49,6 +38,7 @@ with st.form(key='experiment_data_form'):
         f.write(json.dumps(form_info))
 
 compound_filename = st.text_input(label='Введите название общего файла', value='S1200d06k10L75dis25V№3')
+compound_wb = openpyxl.Workbook()
 
 # виджет для загрузки нескольких текстовых файлов
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
@@ -57,8 +47,6 @@ uploaded_files = st.file_uploader("Перетащите сюда и бросьт
 archive_name = None
 date = None
 
-
-
 with ZipFile('data.zip', 'w', ZIP_DEFLATED) as zip:
     excel_filenames = []
     for uploaded_file in uploaded_files:
@@ -66,15 +54,16 @@ with ZipFile('data.zip', 'w', ZIP_DEFLATED) as zip:
         with open(uploaded_file.name, 'wb') as f:
             f.write(uploaded_file.read())
     
-        excel_file, excel_filename = get_excel_file_and_filename(uploaded_file.name, form_info)
+        excel_filename = get_excel_filename(uploaded_file.name, form_info, compound_wb)
 
-        zip.write(excel_file)
+        zip.write(excel_filename)
         excel_filenames.append(excel_filename)
         date = get_date_from_filename(uploaded_file.name)
         archive_name = f"{date}.zip"
 
     if excel_filenames:
-        zip.write(compound_excel_from_many(f'{compound_filename}.xlsx', excel_filenames))
+        compound_wb.save(f'{compound_filename}.xlsx')
+        zip.write(f'{compound_filename}.xlsx')
 
 if archive_name is not None and date is not None:
     with open('data.zip', 'rb') as zip:

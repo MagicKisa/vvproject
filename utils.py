@@ -38,6 +38,9 @@ def read_table(file):
 
 
 def get_float_value(exp_string):
+    ''' принимает строковую эксопненциальную запись числа
+    возвращает float число
+    '''
     f = lambda x: float(str(x).lower().replace(',', '.'))
     return f(exp_string)
 
@@ -49,7 +52,7 @@ def get_float_table(df):
     output: pd.dataframe with float values
     '''
     values = np.array(df.values)
-    values= np.vectorize(get_float_value)(values)
+    values = np.vectorize(get_float_value)(values)
     new_df = pd.DataFrame(values, columns=df.columns)
     return new_df
 
@@ -182,41 +185,39 @@ def get_voo_table(mean_parameters):
     
     return voo_table
 
-@st.cache_data
-def compound_excel_from_many(compound_filename, excel_filenames):
-    compound_wb = openpyxl.Workbook()
-    interval_for_sheet = {"Po-10": [0, 1.25, 2], "Po-15": [1.25, 1.75, 2], "Po-20": [1.75, 10, 2]}
-    worksheets = []
-
-    wb = openpyxl.load_workbook(excel_filenames[0])
-    for sheetname in interval_for_sheet:
-        ws = compound_wb.create_sheet(sheetname)
-        # 31 - номер столбца AE до которого расположены необходимые значения
-        for col in range(1, 31):
-            ws.cell(row=1, column=col).value = wb['Sheet1'].cell(row=1, column=col).value
-        worksheets.append(ws)
-
-    # удаляем автоматически созданный лист
-    del compound_wb['Sheet']
-
-    for excel_filename in excel_filenames:
-        # Загружаем каждый воркбук
-        wb = openpyxl.load_workbook(excel_filename, data_only=True)
-        # Считываем Po
-        Po = get_float_value(wb['Sheet1'].cell(row=2, column=1).value)
-        # Если Po в заданном интервале то загружаем его в заданый лист воркбука
-
-        for sheet in interval_for_sheet:
-            if interval_for_sheet[sheet][0] <= Po <= interval_for_sheet[sheet][1]:
-                row = interval_for_sheet[sheet][2]
-                for col in range(1, 31):
-                    compound_wb[sheet].cell(row=row, column=col).value =  wb['Sheet1'].cell(row=2, column=col).value
-                interval_for_sheet[sheet][2] += 1
+def compound_excel_from_many(compound_wb, worksheet):
+    interval_for_sheet = {"Po-10": [0, 1.25], "Po-15": [1.25, 1.75], "Po-20": [1.75, 10]}
     
-    compound_wb.save(compound_filename)
-    return compound_filename        
+    Po = get_float_value(worksheet.cell(row=2, column=1).value)
+    if 'Sheet' in compound_wb.sheetnames:
+        for sheetname in interval_for_sheet:
+            ws = compound_wb.create_sheet(sheetname)
+            # 31 - номер столбца AE до которого расположены необходимые значения
+            for col in range(1, 31):
+                ws.cell(row=1, column=col).value = worksheet.cell(row=1, column=col).value
 
-def create_excel_by_txt(file, info):
+
+        # удаляем автоматически созданный лист
+        del compound_wb['Sheet']
+
+    if Po <= 1.25:
+        sheet = "Po-10"
+    elif 1.25 < Po <= 1.75:
+        sheet = "Po-15"
+    else:
+        sheet = "Po-20"
+    
+    write_row = 2
+    val = compound_wb[sheet].cell(row=write_row, column=1).value
+    while val is not None:
+        write_row += 1
+        val = compound_wb[sheet].cell(row=write_row, column=1).value
+    
+    for col in range(1, 31):
+        compound_wb[sheet].cell(row=write_row, column=col).value = worksheet.cell(row=2, column=col).value
+    return compound_wb       
+
+def create_excel_by_txt(file, info, compound_wb):
     '''
     На вход принимает название файла содержащего текстовые данные эксперимента и таблицу с данными об экспериментальной установке 
     проводит расчёт интересующих значений записывает их в excel и строит необходимые графики
@@ -254,8 +255,11 @@ def create_excel_by_txt(file, info):
     voo_table.to_excel(writer, sheet_name='Sheet1', startcol=12, index=False)
     answer_table.to_excel(writer, sheet_name='Sheet1', startcol=23, index=False)
 
+    
+
     workbook = writer.book
     worksheet = writer.sheets['Sheet1']
+    compound_wb = compound_excel_from_many(compound_wb, worksheet)
 
     # добавление страницы с графиками и графиков на неё, форматирования
     chartsheet = workbook.create_chartsheet()
