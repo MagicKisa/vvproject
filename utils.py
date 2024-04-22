@@ -1,8 +1,9 @@
 import pandas as pd
 import sys
 import xlsxwriter
-import math
+import openpyxl
 import numpy as np
+import streamlit as st
 import json
 
 def read_headers_list(file, skiprows):
@@ -34,6 +35,10 @@ def read_table(file):
     return df
 
 
+def get_float_value(exp_string):
+    f = lambda x: float(str(x).lower().replace(',', '.'))
+    return f(exp_string)
+
 def get_float_table(df):
     '''
     на вход принимает pd.dataframe со строковыми эксопненциальными записями чисел
@@ -42,8 +47,7 @@ def get_float_table(df):
     output: pd.dataframe with float values
     '''
     values = np.array(df.values)
-    f = lambda x: float(str(x).lower().replace(',', '.'))
-    values= np.vectorize(f)(values)
+    values= np.vectorize(get_float_value)(values)
     new_df = pd.DataFrame(values, columns=df.columns)
     return new_df
 
@@ -151,14 +155,63 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
     
     return answer_table
 
-def get_voo_table():
+def get_voo_table(mean_parameters):
     '''необходима для записи формул в итоговый excel файл,
     при записи в файл на основе уже записанных в книгу excel данных считает по формулам необходимые значения
     '''
-    columns = ['Voo(м/с)', 'Cq', 'Cd', 'Kp', 'T(s)', 'Std', 'Stdо']
-    data = [['=SQRT(2 * A2 * 100)', '=1000 * D2/C2', '=B2/A2', '=C2/(1000 * M2 * 0.025 * 0.009)', '=1/J2', '=J2*0.025/M2', '=K2*0.025/M2']]
-    voo_table = pd.DataFrame(data=data, columns=columns)
+    mean_parameters = get_float_table(mean_parameters)
+    A2 = mean_parameters['Po(кг/см**2)']
+    B2 = mean_parameters['Pk(кг/см**2)']
+    C2 = mean_parameters['Ql(л/с)']
+    D2 = mean_parameters['Qg(м**3/с)']
+    K2 = mean_parameters['Ho(гц)']
+    M2 = np.sqrt(2 * A2 * 100)
+    J2 = mean_parameters['Hk(гц)']
+
+    voo_table = pd.DataFrame()
+    voo_table['Voo(м/с)'] = M2
+    voo_table['Cq'] = 1000 * D2/C2
+    voo_table['Cd'] = B2/A2
+    voo_table['Kp'] = C2/(1000 * M2 * 0.025 * 0.009)
+    voo_table['T(s)'] = 1/J2
+    voo_table['Std'] = J2*0.025/M2
+    voo_table['Stdo'] = K2*0.025/M2
+    
     return voo_table
+
+@st.cache_data
+def compound_excel_from_many(compound_filename, excel_filenames):
+    compound_wb = openpyxl.Workbook()
+    interval_for_sheet = {"Po-10": [0, 1.25, 2], "Po-15": [1.25, 1.75, 2], "Po-20": [1.75, 10, 2]}
+    worksheets = []
+
+    wb = openpyxl.load_workbook(excel_filenames[0])
+    for sheetname in interval_for_sheet:
+        ws = compound_wb.create_sheet(sheetname)
+        # 31 - номер столбца AE до которого расположены необходимые значения
+        for col in range(1, 31):
+            ws.cell(row=1, column=col).value = wb['Sheet1'].cell(row=1, column=col).value
+        worksheets.append(ws)
+
+    # удаляем автоматически созданный лист
+    del compound_wb['Sheet']
+
+    for excel_filename in excel_filenames:
+        # Загружаем каждый воркбук
+        wb = openpyxl.load_workbook(excel_filename, data_only=True)
+        # Считываем Po
+        Po = get_float_value(wb['Sheet1'].cell(row=2, column=1).value)
+        # Если Po в заданном интервале то загружаем его в заданый лист воркбука
+
+        for sheet in interval_for_sheet:
+            if interval_for_sheet[sheet][0] <= Po <= interval_for_sheet[sheet][1]:
+                row = interval_for_sheet[sheet][2]
+                for col in range(1, 31):
+                    compound_wb[sheet].cell(row=row, column=col).value =  wb['Sheet1'].cell(row=2, column=col).value
+                interval_for_sheet[sheet][2] += 1
+    
+    compound_wb.save(compound_filename)
+    return compound_filename        
 
 def create_excel_by_txt(file, info):
     '''
@@ -182,14 +235,15 @@ def create_excel_by_txt(file, info):
     table.to_excel(writer, sheet_name='Sheet1', startrow=3)
     mean_parameters.to_excel(writer, sheet_name='Sheet1', index=False)
 
-    interesting_table = get_interesting_table(get_float_table(table))
-
     period = get_period(mean_parameters)
+    voo_table = get_voo_table(mean_parameters)
+
+    interesting_table = get_interesting_table(get_float_table(table))
     interesting_table = add_period(interesting_table, period)
 
     amplitudes_table = get_amplitudes_table(interesting_table)
     sums_table = get_sums_table(amplitudes_table)
-    voo_table = get_voo_table()
+    
     answer_table = get_answer_table(sums_table, amplitudes_table, interesting_table, mean_parameters)
 
     interesting_table.to_excel(writer, sheet_name='Sheet1', startcol=32, startrow=5, index=False)

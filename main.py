@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import json
-from txt_to_xlsx import create_excel_by_txt
+from utils import create_excel_by_txt, compound_excel_from_many
 from zipfile import ZipFile, ZIP_DEFLATED
 
 def get_date_from_filename(filename):
@@ -48,6 +48,8 @@ with st.form(key='experiment_data_form'):
     with open('form_data.json', 'w', encoding='cp1251') as f:
         f.write(json.dumps(form_info))
 
+compound_filename = st.text_input(label='Введите название общего файла', value='S1200d06k10L75dis25V№3')
+
 # виджет для загрузки нескольких текстовых файлов
 uploaded_files = st.file_uploader("Перетащите сюда и бросьте или выберите текстовый файл экспериментов", type='txt', accept_multiple_files=True)
 
@@ -56,7 +58,9 @@ archive_name = None
 date = None
 
 
+
 with ZipFile('data.zip', 'w', ZIP_DEFLATED) as zip:
+    excel_filenames = []
     for uploaded_file in uploaded_files:
         # Записываем файлы в облаке, чтобы можно было  к ним обращаться
         with open(uploaded_file.name, 'wb') as f:
@@ -65,9 +69,12 @@ with ZipFile('data.zip', 'w', ZIP_DEFLATED) as zip:
         excel_file, excel_filename = get_excel_file_and_filename(uploaded_file.name, form_info)
 
         zip.write(excel_file)
-
+        excel_filenames.append(excel_filename)
         date = get_date_from_filename(uploaded_file.name)
         archive_name = f"{date}.zip"
+
+    if excel_filenames:
+        zip.write(compound_excel_from_many(f'{compound_filename}.xlsx', excel_filenames))
 
 if archive_name is not None and date is not None:
     with open('data.zip', 'rb') as zip:
