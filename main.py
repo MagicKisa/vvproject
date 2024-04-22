@@ -21,7 +21,7 @@ def get_excel_filename(filename, form_info, _compound_wb):
 
     return excel_filename
 
-@st.cache_data
+@st.cache_resource
 def get_compound_wb():
     compound_wb = openpyxl.Workbook()
 
