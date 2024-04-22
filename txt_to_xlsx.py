@@ -72,8 +72,8 @@ def get_period(mean_parameters):
     got: table with mean parameters
     return: period
     '''
-    float_mean_parameters = get_float_table(mean_parameters)
-    period = 1 / float_mean_parameters['Hk(гц)'][0]
+    
+    period = 1 / mean_parameters['Hk(гц)'][0]
     return period
 
 def add_period(interesting_table, period):
@@ -139,7 +139,6 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
     return: table with sought-after vals
     '''
     answer_table = pd.DataFrame()
-    mean_parameters = get_float_table(mean_parameters)
     
     answer_table['Qlэфф(л/с)'] = 0.638 * np.sqrt(mean_parameters['Po(кг/см**2)'] - mean_parameters['Pk(кг/см**2)'])
     answer_table['Cqэфф'] = 1000 * mean_parameters['Qg(м**3/с)'] / answer_table['Qlэфф(л/с)']
@@ -169,7 +168,8 @@ def create_excel_by_txt(file, info):
     # чтение исходных данных
     mean_parameters = read_mean_parameters(file)
     table = read_table(file)
-
+    mean_parameters = get_float_table(mean_parameters)
+    table = get_float_table(table)
 
     # create excel file
     # создание excel файла
@@ -182,7 +182,7 @@ def create_excel_by_txt(file, info):
     table.to_excel(writer, sheet_name='Sheet1', startrow=3)
     mean_parameters.to_excel(writer, sheet_name='Sheet1', index=False)
 
-    interesting_table = get_interesting_table(get_float_table(table))
+    interesting_table = get_interesting_table(table)
 
     period = get_period(mean_parameters)
     interesting_table = add_period(interesting_table, period)
