@@ -14,15 +14,24 @@ def get_date_from_filename(filename):
     return date
 
 
-# декоратор указывает streamlit кэшировать получаемые excel-файлы, чтобы не пересчитывать
+# декоратор указывает streamlit кэшировать получаемые excel-файлы, чтобы не пересчитывать, копируя предыдущее значение
 @st.cache_data
-def get_excel_filename(filename, form_info, _compound_wb):
+def create_excel(filename, form_info, _compound_wb):
+    ''' получает на вход имя текстового файла, данные об эксперименте из формы и ссылку на воркбук
+    создаёт excel файл с обработанными данными из текстового файла и данными об эксперименте, а так же графиками
+    и возвращает его название
+    так же в процессе создания файла записывает некоторые результаты в общий(итоговый) по всем экспериментам воркбук
+    '''
     excel_filename = create_excel_by_txt(filename, form_info, _compound_wb)
 
     return excel_filename
 
+# декоратор указывает что нужно кэшировать воркбук, не копируя его(чтобы не потерялся доступ к открытому воркбуку)
 @st.cache_resource
 def get_compound_wb(compound_filename):
+    ''' Создаёт excel-воркбук и поддерживает ссылку на него
+    здесь имя файла передаётся для кэширования. Сохранение файла происходит ниже
+    '''
     compound_wb = openpyxl.Workbook()
 
     return compound_wb
@@ -31,6 +40,7 @@ def get_compound_wb(compound_filename):
 with open('form_data.json', 'r', encoding='cp1251') as f:
     form_info = json.load(f)
 
+# вывод заголовка
 st.title("Система обработки текстовых результатов labview")
 
 # форма нужна чтобы поменять информацию об эксперименте и сохранить её в файл
@@ -53,19 +63,26 @@ uploaded_files = st.file_uploader("Перетащите сюда и бросьт
 archive_name = None
 date = None
 
+# создаём архив
 with ZipFile('data.zip', 'w', ZIP_DEFLATED) as zip:
     excel_filenames = []
     for uploaded_file in uploaded_files:
         # Записываем файлы в облаке, чтобы можно было  к ним обращаться
         with open(uploaded_file.name, 'wb') as f:
             f.write(uploaded_file.read())
-    
-        excel_filename = get_excel_filename(uploaded_file.name, form_info, compound_wb)
+
+        # Создаём excel file и дополняем итоговый воркбук значениями из него
+        excel_filename = create_excel(uploaded_file.name, form_info, compound_wb)
+        # записываем в архив
         zip.write(excel_filename)
+        # добавляем название в список названий
         excel_filenames.append(excel_filename)
+        # получаем дату эксперимента
         date = get_date_from_filename(uploaded_file.name)
+        # архив называем по дате
         archive_name = f"{date}.zip"
 
+    # сохраняем итоговый воркбук в файл только если список excel не пустой
     if excel_filenames:
         compound_wb.save(f'{compound_filename}.xlsx')
         zip.write(f'{compound_filename}.xlsx')
