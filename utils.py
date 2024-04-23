@@ -51,8 +51,11 @@ def get_float_table(df):
     input: pd.dataframe with exponential string values
     output: pd.dataframe with float values
     '''
+    # вектор значений датафрейма
     values = np.array(df.values)
+    # делает функцию get_float_value применимой к вектору а затем применяет к вектору значений
     values = np.vectorize(get_float_value)(values)
+    # создаёт df с float
     new_df = pd.DataFrame(values, columns=df.columns)
     return new_df
 
@@ -104,23 +107,21 @@ def get_amplitudes_table(interesting_table):
     return: table with max, min amplitudes pэ, Pk-Pa in each period
     '''
     amplitudes_table = pd.DataFrame()
-    pk_min = []
-    pk_max = []
-    p0_min = []
-    p0_max = []
-    d = {'Pэкран': {'max' : [], 'min' : []}, '(Pk-Pa)': {'max' : [], 'min' : []}}
+
+    # словарь для записи максимума и минимума амплитуд в него
+    amplitudes = {'Pэкран': {'max' : [], 'min' : []}, '(Pk-Pa)': {'max' : [], 'min' : []}}
     # считаем максимумы и минимумы амплитуд за каждый период(кроме последнего так как он незавершён) для Pэкран и Pk-Pa 
     for period in interesting_table['period'].unique()[:-1]:
-        for p_name in d.keys():
-            d[p_name]['min'].append(interesting_table[interesting_table['period'] == period][p_name].min())
-            d[p_name]['max'].append(interesting_table[interesting_table['period'] == period][p_name].max())
+        for p_name in amplitudes.keys():
+            amplitudes[p_name]['min'].append(interesting_table[interesting_table['period'] == period][p_name].min())
+            amplitudes[p_name]['max'].append(interesting_table[interesting_table['period'] == period][p_name].max())
             
+    # создаём столбцы в df и записываем туда полученные амплитуды
+    amplitudes_table['pэ_max'] = amplitudes['Pэкран']['max']
+    amplitudes_table['pэ_min'] = amplitudes['Pэкран']['min']
     
-    amplitudes_table['pэ_max'] = d['Pэкран']['max']
-    amplitudes_table['pэ_min'] = d['Pэкран']['min']
-    
-    amplitudes_table['pk_max'] = d['(Pk-Pa)']['max']
-    amplitudes_table['pk_min'] = d['(Pk-Pa)']['min']
+    amplitudes_table['pk_max'] = amplitudes['(Pk-Pa)']['max']
+    amplitudes_table['pk_min'] = amplitudes['(Pk-Pa)']['min']
 
     return amplitudes_table
 
@@ -133,6 +134,7 @@ def get_sums_table(amplitudes_table):
     '''
     sums_table = pd.DataFrame()
 
+    # все как в док-строке
     sums_table['pэ_max'] = [amplitudes_table['pэ_max'].sum()]
     sums_table['pэ_min'] = [amplitudes_table['pэ_min'].sum()]
     sums_table['pk_max'] = [amplitudes_table['pk_max'].sum()]
@@ -148,7 +150,8 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
     return: table with sought-after vals
     '''
     answer_table = pd.DataFrame()
-    
+
+    # формулы взяты из примера excel
     answer_table['Qlэфф(л/с)'] = 0.638 * np.sqrt(mean_parameters['Po(кг/см**2)'] - mean_parameters['Pk(кг/см**2)'])
     answer_table['Cqэфф'] = 1000 * mean_parameters['Qg(м**3/с)'] / answer_table['Qlэфф(л/с)']
     answer_table['Am'] = (sums_table['pэ_max'] - sums_table['pэ_min']) / len(amplitudes_table)
@@ -160,8 +163,8 @@ def get_answer_table(sums_table, amplitudes_table, interesting_table, mean_param
     return answer_table
 
 def get_voo_table(mean_parameters):
-    '''необходима для записи формул в итоговый excel файл,
-    при записи в файл на основе уже записанных в книгу excel данных считает по формулам необходимые значения
+    '''подсчитывает значения по формулам, на основе средних значений. Значения необходимы для итогового файла
+    обозначения и формуы A2... взяты из примера excel сделанного руками научного сотрудника 
     '''
     A2 = mean_parameters['Po(кг/см**2)']
     B2 = mean_parameters['Pk(кг/см**2)']
@@ -183,6 +186,8 @@ def get_voo_table(mean_parameters):
     return voo_table
 
 def compound_excel_from_many(compound_wb, worksheet):
+    ''' Создает файл содержащий итоговые строки со всех экспериментов распределённые в зависимости от значений Po по страницам
+    '''
     interval_for_sheet = {"Po-10": [0, 1.25], "Po-15": [1.25, 1.75], "Po-20": [1.75, 10]}
     
     Po = get_float_value(worksheet.cell(row=2, column=1).value)
@@ -197,19 +202,21 @@ def compound_excel_from_many(compound_wb, worksheet):
         # удаляем автоматически созданный лист
         del compound_wb['Sheet']
 
+    # Распределение по страницам
     if Po <= 1.25:
         sheet = "Po-10"
     elif 1.25 < Po <= 1.75:
         sheet = "Po-15"
     else:
         sheet = "Po-20"
-    
+
+    # Поиск свободной строки
     write_row = 2
     val = compound_wb[sheet].cell(row=write_row, column=1).value
     while val is not None:
         write_row += 1
         val = compound_wb[sheet].cell(row=write_row, column=1).value
-    
+    # запись в свободную строку
     for col in range(1, 31):
         compound_wb[sheet].cell(row=write_row, column=col).value = worksheet.cell(row=2, column=col).value
     return compound_wb       
@@ -269,8 +276,8 @@ def create_excel_by_txt(file, info, compound_wb):
 
     data = Reference(worksheet, min_col=34, max_col=37, min_row=6, max_row=len(interesting_table))
     chart1.add_data(data, titles_from_data=True)
-    # Style the lines
-
+    
+    # форматирование
     width = 10000
     colors = ("008000", "004DFF", "FF6600", "FF0000")
     for i, color in enumerate(colors):
@@ -284,7 +291,6 @@ def create_excel_by_txt(file, info, compound_wb):
     
     chartsheet.add_chart(chart1)
 
-
     # Добавление на числовую страницу описания установки
     for i, key in enumerate(info.keys()):
         cell = worksheet[f'P{i + 14}']
@@ -294,4 +300,3 @@ def create_excel_by_txt(file, info, compound_wb):
     writer.close()
 
     return f"{new_file_name}.xlsx"
-
